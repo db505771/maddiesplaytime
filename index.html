@@ -6,84 +6,123 @@
   <title>Playtime Tracker</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body {
-      background-color: #0E0E0E;
-      color: white;
-      font-family: 'Segoe UI', sans-serif;
-      margin: 0;
-      padding: 0;
-      text-align: center;
-      overflow-x: hidden;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
+    :root {
+      --color1: #FFFFFF;
+      --color2: #FFFFFF;
+      --color3: #AAAAAA;
+      --color4: #666666;
+      --gradient1: linear-gradient(90deg, #FFFFFF 0%, #FFFFFF 100%);
+      --gradient2: linear-gradient(90deg, #AAAAAA 0%, #666666 100%);
     }
-
-    .wrapper {
-      background-color: #0E0E0E;
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
-      border-radius: 16px;
-      padding: 20px;
-      width: 95%;
-      max-width: 450px;
-    }
-
-    .totals {
-      padding: 10px 0;
-    }
-
-    .totals h2 {
-      margin: 0;
-      font-size: 22px;
-    }
-
-    .totals p {
-      margin-top: 6px;
-      color: #ccc;
-      font-size: 16px;
-    }
-
-    #chart-container {
-      width: 100%;
-    }
-
-    #chart {
-      width: 100%;
-      height: auto;
-    }
+body {
+  background-color: transparent;
+  color: var(--color1);
+  font-family: 'Segoe UI', sans-serif;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  overflow-x: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+.wrapper {
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 16px;
+  padding: 20px;
+  width: 95%;
+  max-width: 450px;
+}
+.totals {
+  padding: 10px 0;
+}
+.totals h2 {
+  margin: 0;
+  font-size: 22px;
+  color: var(--color1);
+}
+.totals p {
+  margin-top: 6px;
+  font-size: 16px;
+  color: var(--color3);
+}
+.primary-gradient {
+  display: inline-block;
+  background: var(--gradient1);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.secondary-gradient {
+  display: inline-block;
+  background: var(--gradient2);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+#chart-container {
+  width: 100%;
+}
+#chart {
+  width: 100%;
+  height: auto;
+}
   </style>
 </head>
 <body>
   <div class="wrapper">
     <div class="totals">
-      <h2 id="chart-title">Total Time</h2>
-      <p id="total-time">Loading...</p>
+      <h2 id="chart-title"><span class="primary-gradient">Total Time</span></h2>
+      <p id="total-time"><span class="secondary-gradient">Loading...</span></p>
     </div>
     <div id="chart-container">
       <canvas id="chart" height="180"></canvas>
     </div>
   </div>
-
   <script>
+    function getURLColors() {
+      const parts = window.location.hash.substring(1).split("/");
+      function validColor(value, fallback) {
+        return /^#?(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(value || "")
+          ? "#" + value.replace("#", "").toUpperCase()
+          : fallback;
+      }
+      return {
+        color1: validColor(parts[0], "#FFFFFF"),
+        color2: validColor(parts[1], "#FFFFFF"),
+        color3: validColor(parts[2], "#AAAAAA"),
+        color4: validColor(parts[3], "#666666")
+      };
+    }
+    const colors = getURLColors();
+    document.documentElement.style.setProperty("--color1", colors.color1);
+    document.documentElement.style.setProperty("--color2", colors.color2);
+    document.documentElement.style.setProperty("--color3", colors.color3);
+    document.documentElement.style.setProperty("--color4", colors.color4);
+    document.documentElement.style.setProperty(
+      "--gradient1",
+      `linear-gradient(90deg, ${colors.color1} 0%, ${colors.color2} 100%)`
+    );
+    document.documentElement.style.setProperty(
+      "--gradient2",
+      `linear-gradient(90deg, ${colors.color3} 0%, ${colors.color4} 100%)`
+    );
     const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRo-SarpignS39lDSaIGsV13WyUJOURcyVaRP_mEqY6XfBxby9WA_XCf5AhXi8OcwHDiP4FLqBwMGKw/pub?output=csv";
-
-    let chartMode = 0; // 0 = total, 1 = monthly, 2 = weekly
+    let chartMode = 0;
     let chart;
-
     function formatTime(mins) {
       const h = Math.floor(mins / 60);
       const m = mins % 60;
       return `${h}h ${m}m`;
     }
-
     async function fetchCSV(url) {
       const res = await fetch(url);
       const text = await res.text();
       return text.trim().split("\n").slice(1).map(row => row.split(","));
     }
-
     function getMonthLabelsUpToCurrent() {
       const now = new Date();
       const labels = [];
@@ -92,7 +131,6 @@
       }
       return labels;
     }
-
     function getLast7Days() {
       const list = [];
       for (let i = 6; i >= 0; i--) {
@@ -103,13 +141,11 @@
       }
       return list;
     }
-
     async function updateView(rows) {
       const now = new Date();
       let labels = [];
       let data = [];
       let totalMinutesForText = 0;
-
       if (chartMode === 0) {
         for (let i = rows.length - 1; i >= 0; i--) {
           const h = parseInt(rows[i][2]);
@@ -120,9 +156,13 @@
           }
         }
         const last7 = getLast7Days();
-        labels = last7.map(d => d.toLocaleDateString("default", { month: "short", day: "numeric" }));
+        labels = last7.map(d =>
+          d.toLocaleDateString("default", { month: "short", day: "numeric" })
+        );
         const dateMap = {};
-        last7.forEach(d => dateMap[d.toISOString().slice(0, 10)] = 0);
+        last7.forEach(d => {
+          dateMap[d.toISOString().slice(0, 10)] = 0;
+        });
         for (const row of rows) {
           const date = new Date(row[0]);
           const key = date.toISOString().slice(0, 10);
@@ -132,18 +172,19 @@
           }
         }
         data = last7.map(d => dateMap[d.toISOString().slice(0, 10)] || 0);
-        document.getElementById("chart-title").textContent = "Total Time";
-
+        document.getElementById("chart-title").innerHTML =
+          '<span class="primary-gradient">Total Time</span>';
       } else if (chartMode === 1) {
         labels = getMonthLabelsUpToCurrent();
         const monthMap = {};
-        for (let i = 0; i < labels.length; i++) monthMap[i] = 0;
+        for (let i = 0; i < labels.length; i++) {
+          monthMap[i] = 0;
+        }
         for (const row of rows) {
           const date = new Date(row[0]);
           const mins = parseInt(row[4]);
           if (!isNaN(mins) && date.getFullYear() === now.getFullYear()) {
-            const m = date.getMonth();
-            monthMap[m] += mins;
+            monthMap[date.getMonth()] += mins;
           }
         }
         data = Object.values(monthMap);
@@ -151,17 +192,25 @@
         for (const row of rows) {
           const d = new Date(row[0]);
           const mins = parseInt(row[4]);
-          if (!isNaN(mins) && d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) {
+          if (
+            !isNaN(mins) &&
+            d.getFullYear() === now.getFullYear() &&
+            d.getMonth() === now.getMonth()
+          ) {
             totalMinutesForText += mins;
           }
         }
-        document.getElementById("chart-title").textContent = "Monthly Playtime";
-
+        document.getElementById("chart-title").innerHTML =
+          '<span class="primary-gradient">Monthly Playtime</span>';
       } else if (chartMode === 2) {
         const last7 = getLast7Days();
-        labels = last7.map(d => d.toLocaleDateString("default", { month: "short", day: "numeric" }));
+        labels = last7.map(d =>
+          d.toLocaleDateString("default", { month: "short", day: "numeric" })
+        );
         const dateMap = {};
-        last7.forEach(d => dateMap[d.toISOString().slice(0, 10)] = 0);
+        last7.forEach(d => {
+          dateMap[d.toISOString().slice(0, 10)] = 0;
+        });
         for (const row of rows) {
           const date = new Date(row[0]);
           const key = date.toISOString().slice(0, 10);
@@ -172,17 +221,24 @@
         }
         data = last7.map(d => dateMap[d.toISOString().slice(0, 10)] || 0);
         totalMinutesForText = data.reduce((a, b) => a + b, 0);
-        document.getElementById("chart-title").textContent = "Weekly Time";
+        document.getElementById("chart-title").innerHTML =
+          '<span class="primary-gradient">Weekly Time</span>';
       }
-
-      document.getElementById("total-time").textContent = formatTime(totalMinutesForText);
-
+      // Playtime amount always uses colors 3 and 4.
+      document.getElementById("total-time").innerHTML =
+        `<span class="secondary-gradient">${formatTime(totalMinutesForText)}</span>`;
       const ctx = document.getElementById("chart").getContext("2d");
       if (chart) chart.destroy();
+      // Primary gradient for the chart.
       const gradient = ctx.createLinearGradient(0, 0, 0, 200);
-      gradient.addColorStop(0, "rgba(255, 255, 255, 0.4)");
-      gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
-
+      gradient.addColorStop(0, colors.color1);
+      gradient.addColorStop(1, colors.color2);
+      // Secondary gradient for grey chart labels.
+      const secondaryChartGradient = ctx.createLinearGradient(
+        0, 0, ctx.canvas.width, 0
+      );
+      secondaryChartGradient.addColorStop(0, colors.color3);
+      secondaryChartGradient.addColorStop(1, colors.color4);
       chart = new Chart(ctx, {
         type: "line",
         data: {
@@ -190,12 +246,14 @@
           datasets: [{
             data,
             label: "Minutes Played",
-            borderColor: "white",
+            borderColor: colors.color1,
             backgroundColor: gradient,
             fill: true,
             tension: 0.4,
             pointRadius: 3,
-            borderWidth: 1.5,
+            pointBackgroundColor: colors.color1,
+            pointBorderColor: colors.color2,
+            borderWidth: 1.5
           }]
         },
         options: {
@@ -209,7 +267,10 @@
           },
           scales: {
             x: {
-              ticks: { color: "white", font: { size: 10 } },
+              ticks: {
+                color: secondaryChartGradient,
+                font: { size: 10 }
+              },
               grid: { display: false }
             },
             y: {
@@ -221,14 +282,11 @@
         }
       });
     }
-
     function setupSwipe(rows) {
       let startX = 0;
-
       document.body.addEventListener("touchstart", e => {
         startX = e.touches[0].clientX;
       });
-
       document.body.addEventListener("touchend", e => {
         const deltaX = e.changedTouches[0].clientX - startX;
         if (Math.abs(deltaX) > 50) {
@@ -241,13 +299,11 @@
         }
       });
     }
-
     async function init() {
       const rows = await fetchCSV(csvUrl);
       setupSwipe(rows);
       updateView(rows);
     }
-
     init();
   </script>
 </body>
